@@ -131,6 +131,16 @@ NSTimer *timer;
     return self;
 }
 
+// credit: https://gist.github.com/PeterStegnar/63cb8c9a39a13265c3a855e24a33ca37#file-cdvwkwebviewengine-m-L68-L74
+// This is what you need to add to enable untrusted SSL connection
+- (void)webView:(WKWebView *)webView
+didReceiveAuthenticationChallenge:(NSURLAuthenticationChallenge *)challenge
+completionHandler:(void (^)(NSURLSessionAuthChallengeDisposition disposition, NSURLCredential *credential))completionHandler {
+    SecTrustRef serverTrust = challenge.protectionSpace.serverTrust;
+    completionHandler(NSURLSessionAuthChallengeUseCredential, [NSURLCredential credentialForTrust:serverTrust]);
+}
+
+
 -(NSString *) getStartPath {
     NSString * wwwPath = [[NSBundle mainBundle] pathForResource:@"www" ofType: nil];
 
