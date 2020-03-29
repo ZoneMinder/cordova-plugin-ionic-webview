@@ -1,3 +1,21 @@
+## [4.1.3](https://github.com/ionic-team/cordova-plugin-ionic-webview/compare/v4.1.2...v4.1.3) (2019-10-30)
+
+
+### Bug Fixes
+
+* **android:** return proper mimeType for .mjs files ([#455](https://github.com/ionic-team/cordova-plugin-ionic-webview/issues/455)) ([173a313](https://github.com/ionic-team/cordova-plugin-ionic-webview/commit/173a313))
+* **ios:** mitigate media memory usage ([#459](https://github.com/ionic-team/cordova-plugin-ionic-webview/issues/459)) ([cbd526d](https://github.com/ionic-team/cordova-plugin-ionic-webview/commit/cbd526d))
+* **ios:** remove itms-services private scheme ([#464](https://github.com/ionic-team/cordova-plugin-ionic-webview/issues/464)) ([d7d2600](https://github.com/ionic-team/cordova-plugin-ionic-webview/commit/d7d2600))
+
+## [4.1.2](https://github.com/ionic-team/cordova-plugin-ionic-webview/compare/v4.1.1...v4.1.2) (2019-09-25)
+
+
+### Bug Fixes
+
+* **android:** allow schemes that start by https ([#437](https://github.com/ionic-team/cordova-plugin-ionic-webview/issues/437)) ([fab9d1f](https://github.com/ionic-team/cordova-plugin-ionic-webview/commit/fab9d1f))
+* **Android:** return proper mimeType for wasm files ([0eb8a37](https://github.com/ionic-team/cordova-plugin-ionic-webview/commit/0eb8a37))
+* **ios:** make programmatically focus work on iOS 13 ([#438](https://github.com/ionic-team/cordova-plugin-ionic-webview/issues/438)) ([7a514b0](https://github.com/ionic-team/cordova-plugin-ionic-webview/commit/7a514b0)), closes [#435](https://github.com/ionic-team/cordova-plugin-ionic-webview/issues/435)
+
 ## [4.1.1](https://github.com/ionic-team/cordova-plugin-ionic-webview/compare/v4.1.0...v4.1.1) (2019-06-26)
 
 

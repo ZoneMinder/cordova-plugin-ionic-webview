@@ -205,7 +205,14 @@ completionHandler:(void (^)(NSURLSessionAuthChallengeDisposition disposition, NS
         [configuration setValue:[NSNumber numberWithBool:YES]
                          forKey:_BGStatus];
     }
-
+    NSString *userAgent = configuration.applicationNameForUserAgent;
+    if (
+        [settings cordovaSettingForKey:@"OverrideUserAgent"] == nil &&
+        [settings cordovaSettingForKey:@"AppendUserAgent"] != nil
+        ) {
+        userAgent = [NSString stringWithFormat:@"%@ %@", userAgent, [settings cordovaSettingForKey:@"AppendUserAgent"]];
+    }
+    configuration.applicationNameForUserAgent = userAgent;
     configuration.allowsInlineMediaPlayback = [settings cordovaBoolSettingForKey:@"AllowInlineMediaPlayback" defaultValue:YES];
     configuration.suppressesIncrementalRendering = [settings cordovaBoolSettingForKey:@"SuppressesIncrementalRendering" defaultValue:NO];
     configuration.allowsAirPlayForMediaPlayback = [settings cordovaBoolSettingForKey:@"MediaPlaybackAllowsAirPlay" defaultValue:YES];
@@ -280,8 +287,9 @@ completionHandler:(void (^)(NSURLSessionAuthChallengeDisposition disposition, NS
     // add to keyWindow to ensure it is 'active'
     [UIApplication.sharedApplication.keyWindow addSubview:self.engineWebView];
 
-    if ([self.viewController isKindOfClass:[CDVViewController class]]) {
-        wkWebView.customUserAgent = ((CDVViewController*) self.viewController).userAgent;
+    NSString * overrideUserAgent = [settings cordovaSettingForKey:@"OverrideUserAgent"];
+    if (overrideUserAgent != nil) {
+        wkWebView.customUserAgent = overrideUserAgent;
     }
 
     if ([self.viewController conformsToProtocol:@protocol(WKUIDelegate)]) {
@@ -332,9 +340,12 @@ completionHandler:(void (^)(NSURLSessionAuthChallengeDisposition disposition, NS
     Class class = NSClassFromString(@"WKContentView");
     NSOperatingSystemVersion iOS_11_3_0 = (NSOperatingSystemVersion){11, 3, 0};
     NSOperatingSystemVersion iOS_12_2_0 = (NSOperatingSystemVersion){12, 2, 0};
+    NSOperatingSystemVersion iOS_13_0_0 = (NSOperatingSystemVersion){13, 0, 0};
     char * methodSignature = "_startAssistingNode:userIsInteracting:blurPreviousNode:changingActivityState:userObject:";
 
-    if ([[NSProcessInfo processInfo] isOperatingSystemAtLeastVersion: iOS_12_2_0]) {
+    if ([[NSProcessInfo processInfo] isOperatingSystemAtLeastVersion: iOS_13_0_0]) {
+         methodSignature = "_elementDidFocus:userIsInteracting:blurPreviousNode:activityStateChanges:userObject:";
+     } else if ([[NSProcessInfo processInfo] isOperatingSystemAtLeastVersion: iOS_12_2_0]) {
         methodSignature = "_elementDidFocus:userIsInteracting:blurPreviousNode:changingActivityState:userObject:";
     }
 
@@ -525,7 +536,6 @@ completionHandler:(void (^)(NSURLSessionAuthChallengeDisposition disposition, NS
 }
 
 // This forwards the methods that are in the header that are not implemented here.
-// Both WKWebView and UIWebView implement the below:
 //     loadHTMLString:baseURL:
 //     loadRequest:
 - (id)forwardingTargetForSelector:(SEL)aSelector
@@ -677,9 +687,6 @@ completionHandler:(void (^)(NSURLSessionAuthChallengeDisposition disposition, NS
 
 - (void)webView:(WKWebView*)webView didFinishNavigation:(WKNavigation*)navigation
 {
-    CDVViewController* vc = (CDVViewController*)self.viewController;
-    [CDVUserAgentUtil releaseLock:vc.userAgentLockToken];
-
     [[NSNotificationCenter defaultCenter] postNotification:[NSNotification notificationWithName:CDVPageDidLoadNotification object:webView]];
 }
 
@@ -691,14 +698,14 @@ completionHandler:(void (^)(NSURLSessionAuthChallengeDisposition disposition, NS
 - (void)webView:(WKWebView*)theWebView didFailNavigation:(WKNavigation*)navigation withError:(NSError*)error
 {
     CDVViewController* vc = (CDVViewController*)self.viewController;
-    [CDVUserAgentUtil releaseLock:vc.userAgentLockToken];
 
     NSString* message = [NSString stringWithFormat:@"Failed to load webpage with error: %@", [error localizedDescription]];
     NSLog(@"%@", message);
 
     NSURL* errorUrl = vc.errorURL;
     if (errorUrl) {
-        errorUrl = [NSURL URLWithString:[NSString stringWithFormat:@"?error=%@", [message stringByAddingPercentEscapesUsingEncoding:NSUTF8StringEncoding]] relativeToURL:errorUrl];
+        NSCharacterSet *charSet = [NSCharacterSet URLFragmentAllowedCharacterSet];
+        errorUrl = [NSURL URLWithString:[NSString stringWithFormat:@"?error=%@", [message stringByAddingPercentEncodingWithAllowedCharacters:charSet]] relativeToURL:errorUrl];
         NSLog(@"%@", [errorUrl absoluteString]);
         [theWebView loadRequest:[NSURLRequest requestWithURL:errorUrl]];
     }
@@ -743,7 +750,11 @@ completionHandler:(void (^)(NSURLSessionAuthChallengeDisposition disposition, NS
             // https://issues.apache.org/jira/browse/CB-12497
             int navType = (int)navigationAction.navigationType;
             if (WKNavigationTypeOther == navigationAction.navigationType) {
-                navType = (int)UIWebViewNavigationTypeOther;
+                #ifdef __CORDOVA_6_0_0
+                    navType = -1;
+                #else
+                    navType = 5;
+                #endif
             }
             shouldAllowRequest = (((BOOL (*)(id, SEL, id, int))objc_msgSend)(plugin, selector, navigationAction.request, navType));
             if (!shouldAllowRequest) {
@@ -768,9 +779,8 @@ completionHandler:(void (^)(NSURLSessionAuthChallengeDisposition disposition, NS
             [scheme isEqualToString:@"mailto"] ||
             [scheme isEqualToString:@"facetime"] ||
             [scheme isEqualToString:@"sms"] ||
-            [scheme isEqualToString:@"maps"] ||
-            [scheme isEqualToString:@"itms-services"]) {
-            [[UIApplication sharedApplication] openURL:url];
+            [scheme isEqualToString:@"maps"]) {
+            [[UIApplication sharedApplication] openURL:url options:@{} completionHandler:nil];
             decisionHandler(WKNavigationActionPolicyCancel);
         } else {
             decisionHandler(WKNavigationActionPolicyAllow);
